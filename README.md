@@ -1,14 +1,15 @@
 # Godot-RayTracing-Demo
 
-![p1](images/p1.png)
+<table>
+    <tr>
+        <td ><img src="images/p1.png" /></td>
+        <td ><center><img src="images/p2.png"  ></td>
+    </tr>
+</table>
 
-![p2](README.assets/p2.png)
+A shader-based ray tracing demo. You can freely adjust the camera's transforms, lens aperture, fov and focal length.  
 
-A shader-based ray tracing demo
-
-You can freely adjust the camera's transforms, lens aperture, fov and focal length
-
-![](./images/ray-tracing-demo.png)
+![](images/ray-tracing-demo.png)
 
 
 ## more info
