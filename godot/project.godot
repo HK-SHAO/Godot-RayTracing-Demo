@@ -12,7 +12,7 @@ _global_script_classes=[{
 "base": "Camera3D",
 "class": &"FreeCamera3D",
 "language": &"GDScript",
-"path": "res://shared/script/FreeCamera3D.gd"
+"path": "res://addons/RayTracing/shared/script/FreeCamera3D.gd"
 }, {
 "base": "Camera3D",
 "class": &"OldFreeCamera3D",
