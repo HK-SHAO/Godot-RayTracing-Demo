@@ -7,6 +7,8 @@
     </tr>
 </table>
 
+A shader-based PBR ray tracing demo. Real-time denoise and you can freely adjust the camera's transforms, lens aperture, fov and focal length.
+
 <table>
     <tr>
         <td ><img width="1000" src="images/p1.png" /></td>
@@ -14,7 +16,9 @@
     </tr>
 </table>
 
-A shader-based PBR ray tracing demo. Real-time denoise and you can freely adjust the camera's transforms, lens aperture, fov and focal length.  
+## [Run Demo](https://shaofun.itch.io/godot-raytracing)
+
+- https://shaofun.itch.io/godot-raytracing  
 
 - Hope you can contribute to this repo : )
 
