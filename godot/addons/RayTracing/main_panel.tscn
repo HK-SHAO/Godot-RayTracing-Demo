@@ -1,8 +1,9 @@
-[gd_scene load_steps=12 format=3 uid="uid://ubje1c34mpqe"]
+[gd_scene load_steps=13 format=3 uid="uid://ubje1c34mpqe"]
 
 [ext_resource type="Shader" path="res://addons/RayTracing/shaders/raytracing_pbr.gdshader" id="1_0w4fs"]
 [ext_resource type="Script" path="res://addons/RayTracing/main_panel.gd" id="1_3yfr2"]
 [ext_resource type="Script" path="res://addons/RayTracing/shared/script/always/always_uniform_camera.gd" id="2_xxsdv"]
+[ext_resource type="Texture2D" uid="uid://ckdjst508xgv1" path="res://addons/RayTracing/textures/environment/Tokyo_BigSight_3k.hdr" id="3_v1aqf"]
 [ext_resource type="Shader" path="res://addons/RayTracing/shaders/post_processing.gdshader" id="4_0kxc5"]
 [ext_resource type="Script" path="res://addons/RayTracing/shared/script/always/alwasy_fill_viewport.gd" id="4_cek0v"]
 [ext_resource type="Script" path="res://addons/RayTracing/shared/script/FreeCamera3D.gd" id="5_nuxi6"]
@@ -10,17 +11,18 @@
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_w5e1j"]
 shader = ExtResource("1_0w4fs")
-shader_parameter/camera_aperture = 0.005
+shader_parameter/camera_aperture = 0.0
 shader_parameter/camera_aspect = 1.81194
-shader_parameter/camera_focus = 2.0
-shader_parameter/camera_gamma = 0.7
-shader_parameter/camera_position = Vector3(1.73839, 1.38532, 6.06247)
-shader_parameter/camera_rotation = Basis(0.977294, -0.060034, 0.20266, 0, 0.958694, 0.284006, -0.211364, -0.277582, 0.937049)
+shader_parameter/camera_focus = 1.277
+shader_parameter/camera_gamma = 0.8
+shader_parameter/camera_position = Vector3(5.59609, 1.33758, 2.72199)
+shader_parameter/camera_rotation = Basis(0.428432, -0.118906, 0.895584, 0, 0.991161, 0.131601, -0.903449, -0.0563874, 0.424702)
 shader_parameter/camera_vfov = 30.0
+shader_parameter/environment_hdri = ExtResource("3_v1aqf")
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_h8h8v"]
 shader = ExtResource("4_0kxc5")
-shader_parameter/frame = 90.0
+shader_parameter/frame = 734.0
 
 [sub_resource type="ViewportTexture" id="ViewportTexture_5c6e4"]
 viewport_path = NodePath("Control/RayTracing/SubViewport")
@@ -478,7 +480,7 @@ layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -252.0
+offset_left = -300.0
 offset_bottom = 194.0
 grow_horizontal = 0
 mouse_filter = 2
@@ -491,13 +493,13 @@ theme_override_constants/margin_bottom = 30
 layout_mode = 2
 offset_left = 30.0
 offset_top = 30.0
-offset_right = 222.0
+offset_right = 270.0
 offset_bottom = 164.0
 theme_override_styles/panel = ExtResource("7_0tgr0")
 
 [node name="MarginContainer" type="MarginContainer" parent="UI/MarginContainer2/PanelContainer"]
 layout_mode = 2
-offset_right = 192.0
+offset_right = 240.0
 offset_bottom = 134.0
 theme_override_constants/margin_left = 24
 theme_override_constants/margin_top = 24
@@ -508,12 +510,12 @@ theme_override_constants/margin_bottom = 24
 layout_mode = 2
 offset_left = 24.0
 offset_top = 24.0
-offset_right = 168.0
+offset_right = 216.0
 offset_bottom = 110.0
 
 [node name="HBoxContainer" type="HBoxContainer" parent="UI/MarginContainer2/PanelContainer/MarginContainer/VBoxContainer"]
 layout_mode = 2
-offset_right = 144.0
+offset_right = 192.0
 offset_bottom = 26.0
 
 [node name="Label" type="Label" parent="UI/MarginContainer2/PanelContainer/MarginContainer/VBoxContainer/HBoxContainer"]
@@ -526,16 +528,16 @@ text = "FPS"
 unique_name_in_owner = true
 layout_mode = 2
 offset_left = 32.0
-offset_right = 144.0
+offset_right = 192.0
 offset_bottom = 26.0
 size_flags_horizontal = 3
-text = "55"
+text = "69"
 horizontal_alignment = 2
 
 [node name="HBoxContainer2" type="HBoxContainer" parent="UI/MarginContainer2/PanelContainer/MarginContainer/VBoxContainer"]
 layout_mode = 2
 offset_top = 30.0
-offset_right = 144.0
+offset_right = 192.0
 offset_bottom = 56.0
 
 [node name="Label" type="Label" parent="UI/MarginContainer2/PanelContainer/MarginContainer/VBoxContainer/HBoxContainer2"]
@@ -548,16 +550,16 @@ text = "Sampling"
 unique_name_in_owner = true
 layout_mode = 2
 offset_left = 76.0
-offset_right = 144.0
+offset_right = 192.0
 offset_bottom = 26.0
 size_flags_horizontal = 3
-text = "89"
+text = "197"
 horizontal_alignment = 2
 
 [node name="HBoxContainer3" type="HBoxContainer" parent="UI/MarginContainer2/PanelContainer/MarginContainer/VBoxContainer"]
 layout_mode = 2
 offset_top = 60.0
-offset_right = 144.0
+offset_right = 192.0
 offset_bottom = 86.0
 
 [node name="Label" type="Label" parent="UI/MarginContainer2/PanelContainer/MarginContainer/VBoxContainer/HBoxContainer3"]
@@ -569,7 +571,7 @@ text = "verion"
 [node name="sample" type="Label" parent="UI/MarginContainer2/PanelContainer/MarginContainer/VBoxContainer/HBoxContainer3"]
 layout_mode = 2
 offset_left = 54.0
-offset_right = 144.0
+offset_right = 192.0
 offset_bottom = 26.0
 size_flags_horizontal = 3
 text = "HK-SHAO"

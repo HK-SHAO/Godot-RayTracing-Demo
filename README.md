@@ -2,14 +2,23 @@
 
 <table>
     <tr>
+        <td ><img width="1000" src="images/2022-11-21-223846.jpg" /></td>
+        <td ><img width="1000" src="images/2022-11-21-230202.jpg" /></td>
+    </tr>
+</table>
+
+<table>
+    <tr>
         <td ><img width="1000" src="images/p1.png" /></td>
         <td ><img width="1000" src="images/p2.png" /></td>
     </tr>
 </table>
 
-A shader-based ray tracing demo. You can freely adjust the camera's transforms, lens aperture, fov and focal length.  
+A shader-based PBR ray tracing demo. Real-time denoise and you can freely adjust the camera's transforms, lens aperture, fov and focal length.  
 
-![](images/ray-tracing-demo.png)
+- Hope you can contribute to this repo : )
+
+![](images/2022-11-21-223846.jpg)
 
 
 ## more info
