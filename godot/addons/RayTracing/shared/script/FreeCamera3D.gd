@@ -35,15 +35,19 @@ func _ready() -> void:
     @warning_ignore(return_value_discarded)
     control.connect("gui_input", gui_input)
 
-
 func gui_input(event: InputEvent):
     if not current:
         return
 
     if captured:
         if event is InputEventMouseMotion:
-            _rotation.y -= event.relative.x / 1000 * sensitivity
-            _rotation.x -= event.relative.y / 1000 * sensitivity
+            var dt = sensitivity / 1500
+            
+            if OS.has_feature("wasm"):
+                dt /= 6
+            
+            _rotation.y -= event.relative.x * dt
+            _rotation.x -= event.relative.y * dt
             if restric:
                 _rotation.x = clamp(_rotation.x, PI/-2, PI/2)
 
@@ -88,5 +92,6 @@ func _process(delta: float) -> void:
     _tmp_rotation += _rotate
     set_rotation(_tmp_rotation)
 
-    var dd := 0.00000001
+    const dd := 0.00000001
     moving = _rotate.length_squared() > dd || _translate.length_squared() > dd
+    
