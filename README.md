@@ -2,7 +2,7 @@
 
 <table>
     <tr>
-        <td ><img width="1000" src="images/2022-11-21-223846.jpg" /></td>
+        <td ><img width="1000" src="images/2022-11-21-230937.jpg" /></td>
         <td ><img width="1000" src="images/2022-11-21-230202.jpg" /></td>
     </tr>
 </table>
