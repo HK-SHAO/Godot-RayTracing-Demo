@@ -16,12 +16,13 @@ A shader-based PBR ray tracing demo. Real-time denoise and you can freely adjust
     </tr>
 </table>
 
-## [Run Demo](https://shaofun.itch.io/godot-raytracing)
+## Demo
 
 - [raytracing.shao.fun](raytracing.shao.fun)
 - https://shaofun.itch.io/godot-raytracing  
 
 - Hope you can contribute to this repo : )
+  - https://github.com/HK-SHAO/Godot-RayTracing-Demo/
 
 ![](images/2022-11-21-223846.jpg)
 
