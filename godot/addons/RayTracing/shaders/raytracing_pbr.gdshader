@@ -12,13 +12,13 @@ uniform float camera_gamma      = 0.2;                  // gamma 矫正值
 // 配置常量
 const float TMIN        = 0.001;                        // 光开始传播的起始偏移，避免光线自相交
 const float TMAX        = 2000.0;                       // 最大单次光线传播距离
-const float PRECISION   = 0.00001;                      // 必须要小于 TMIN，否则光线会自相交产生阴影痤疮
+const float PRECISION   = 0.0001;                      // 必须要小于 TMIN，否则光线会自相交产生阴影痤疮
 const float MAP_SIZE    = float(0x7fffffff);            // 地图大小
 
 const uint MAX_RAYMARCH = 512U;                         // 最大光线步进次数
 const uint MAX_RAYTRACE = 512U;                         // 最大光线追踪次数
 
-const float ENV_IOR = 1.0;                              // 环境的折射率
+const float ENV_IOR = 1.000277;                         // 环境的折射率
 
 // 传入贴图
 uniform sampler2D environment_hdri;                     // 环境 HDRI 贴图
@@ -104,7 +104,7 @@ vec2 random_in_unit_disk(inout random seed) {
 // 从摄像机获取光线
 ray get_ray(camera c, vec2 uv, vec4 color, inout random rand) {
     // 根据 VFOV 和显示画布长宽比计算传感器长宽
-    float theta = c.vfov * PI / 180.0;
+    float theta = radians(c.vfov);
     float half_height = tan(theta / 2.0);
     float half_width = c.aspect * half_height;
     
@@ -157,8 +157,8 @@ object map(vec3 p) {
     object objs[] = {
         object(sphere(p - vec3(0, -100.5, 0), 100),
                         material(vec3(1.0, 1.0, 1.0)*0.3,
-                                    1.0, // 粗糙度
-                                    0.0, // 金属度
+                                    0.0, // 粗糙度
+                                    1.0, // 金属度
                                     0.0, // 透明度
                                     1.0, // 折射率
                                     vec4(0),
@@ -197,7 +197,7 @@ object map(vec3 p) {
         ),
         object(box(p - vec3(0, 0, -1), vec3(2, 1, 0.2)),
                         material(vec3(1.0, 1.0, 1.0),
-                                    0.1, // 粗糙度
+                                    0.01, // 粗糙度
                                     0.9, // 金属度
                                     0.0, // 透明度
                                     1.0, // 折射率
@@ -230,7 +230,7 @@ object map(vec3 p) {
                                     0.0, // 粗糙度
                                     0.0, // 金属度
                                     1.0, // 透明度
-                                    1.25, // 折射率
+                                    1.5, // 折射率
                                     vec4(0),
                                     vec3(0, 0, 1)
                         )
@@ -240,7 +240,7 @@ object map(vec3 p) {
                                     0.0, // 粗糙度
                                     0.0, // 金属度
                                     1.0, // 透明度
-                                    1.25, // 折射率
+                                    1.778, // 折射率
                                     vec4(0),
                                     vec3(0, 0, 1)
                         )
@@ -319,7 +319,7 @@ vec4 sky(ray r) {
 //    vec4 bottom = vec4(1.0, 1.0, 1.0, 1.0);
 //    vec4 top = vec4(0.5, 0.7, 1.0, 1.0);
 //    return mix(bottom, top, t);
-    vec2 uv = sample_spherical_map(normalize(r.direction));
+    vec2 uv = sample_spherical_map(r.direction);
     uv.y = 1.0 - uv.y;
     vec3 color = texture(environment_hdri, uv).rgb;
 
@@ -334,8 +334,13 @@ float pow5(float x) {
 }
 
 // 用粗糙度计算菲涅尔近似值
-float fresnel_schlick(float cosine, float F0, float X) {
-    return F0 + (max(1.0 - X, F0) - F0) * pow5(abs(1.0 - cosine));
+float fresnel_schlick(float cosine, float F0) {
+    return F0 + (1.0 - F0) * pow5(abs(1.0 - cosine));
+}
+
+// 用粗糙度计算菲涅尔近似值
+float fresnel_schlick_roughness(float cosine, float F0, float roughness) {
+    return F0 + (max(1.0 - roughness, F0) - F0) * pow5(abs(1.0 - cosine));
 }
 
 // 以 n 为法线进行半球采样
@@ -388,8 +393,6 @@ ray PBR(ray r, inout record rec, inout random rand) {
 
     // 对透明度的处理可能还有问题
     if (noise(rand) < transmission) {
-        C *= albedo;
-        
         // 折射率之比
         float eta;
         
@@ -401,35 +404,38 @@ ray PBR(ray r, inout record rec, inout random rand) {
             eta = ENV_IOR / ior;
         }
         
-        const float F0 = 0.08;
-        float F = fresnel_schlick(NoV, F0, ior);
+        float F0 = (eta - 1.0) / (eta + 1.0);
+        F0 *= 5.0 * F0; // 让透明材质的反射更明显一些
+        float F = fresnel_schlick(NoV, F0);
         N = hemispheric_sampling_roughness(N, roughness, rand);
+        
         if (noise(rand) < F + metallic && NoV > 0.0) {
             L = reflect(r.direction, N);
             r.color.a *= (sign(dot(L, N)) + 1.0) * 0.5;
         } else {
             L = refract(r.direction, N, eta);
             L = -L * sign(dot(L, N));
-  
         }
     } else {
         const float F0 = 0.04;
-        float F = fresnel_schlick(NoV, F0, roughness);
+        float F = fresnel_schlick_roughness(NoV, F0, roughness);
     
         // 反射或者漫反射
         if (noise(rand) < F + metallic) {
-            C *= albedo; 
             N = hemispheric_sampling_roughness(N, roughness, rand);
             L = reflect(r.direction, N);
         } else {
             // 漫反射
-            C *= albedo;
             L = hemispheric_sampling(N, rand);
         }
 
         // 如果光射到表面下面就直接吸收掉
         r.color.a *= (sign(dot(L, N)) + 1.0) * 0.5;
     }
+    
+    const float brightness = 1.0; // 光强
+    const float pdf = 1.0; // 重要性采样
+    C *= albedo * brightness / pdf;
 
     // 更新光的方向和颜色
     r.color.rgb = C;
@@ -444,6 +450,9 @@ ray PBR(ray r, inout record rec, inout random rand) {
 
 // 光线追踪
 ray raytrace(ray r, inout random rand) {
+    // 俄罗斯轮盘赌概率，防止光线过分的反复反射
+    const float roulette_prob = 0.9;
+    
     for (uint i = 0U; i < MAX_RAYTRACE; i++) {
         record rec = raycast(r);
         
@@ -460,10 +469,14 @@ ray raytrace(ray r, inout random rand) {
 //        r.color.a = 1.0;
 //        break;
         
-        // 光被吸收完了就不用继续了
-        if (r.color.a <= 0.0) {
+        // 光被吸收掉就不用继续了
+        if (r.color.a <= 0.0001 || noise(rand) > roulette_prob) {
+           r.color *= 0.0;
             break;
         }
+        
+        // 能量守恒
+        r.color /= roulette_prob;
         
         // 处理自发光
         if (abs(rec.mtl.emission.a) > 0.0) {
