@@ -16,6 +16,9 @@ A shader-based PBR ray tracing demo. Real-time denoise and you can freely adjust
     </tr>
 </table>
 
+- Latest GitHub Gist
+  - https://gist.github.com/HK-SHAO/2dbb8c717fb3fb137c5cd97a456d659d
+
 ## Demo
 
 - [raytracing.shao.fun](https://raytracing.shao.fun)
