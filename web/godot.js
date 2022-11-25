@@ -12951,7 +12951,9 @@ var dynCall_jiiji = Module["dynCall_jiiji"] = createExportWrapper("dynCall_jiiji
 
 var dynCall_jiiiji = Module["dynCall_jiiiji"] = createExportWrapper("dynCall_jiiiji");
 
-var dynCall_iijiiii = Module["dynCall_iijiiii"] = createExportWrapper("dynCall_iijiiii");
+var dynCall_jiijii = Module["dynCall_jiijii"] = createExportWrapper("dynCall_jiijii");
+
+var dynCall_iijiiij = Module["dynCall_iijiiij"] = createExportWrapper("dynCall_iijiiij");
 
 var dynCall_jijjjiiiiiiii = Module["dynCall_jijjjiiiiiiii"] = createExportWrapper("dynCall_jijjjiiiiiiii");
 
