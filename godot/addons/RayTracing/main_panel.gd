@@ -16,6 +16,9 @@ func _ready() -> void:
     initCameraTransform = camera.transform
     initCameraRotation = camera.rotation
     
+    _view_port_size_changed()
+    get_viewport().size_changed.connect(_view_port_size_changed)
+    
     %camera_aperture_s.value = %always_uniform_camera.aperture
     %camera_fov_s.value = camera.fov
     %camera_focus_s.value = %always_uniform_camera.focus
@@ -25,12 +28,20 @@ func _ready() -> void:
     %fixed_fps_edit.text = str(fixed_fps)
     %resolution_s.value = stretch_shrink
 
-func _fixed_fps(delta: float) -> void:
+func _view_port_size_changed():
+    var viewport_rect = get_viewport_rect()
+    var min = min(viewport_rect.size.x, viewport_rect.size.y)
+    %resolution_s.max_value = float(min)
+    
+    if stretch_shrink > min:
+        %resolution_s.value = min
+
+func _fixed_fps() -> void:
     var delta_fps := fps - fixed_fps
     
     var base = %light_quality_s.value
     
-    if delta_fps >= 0:   base += 0.01
+    if delta_fps >= 0:  base += 0.01
     elif delta_fps < 4: base -= min(base*0.01, 0.001)
     
     %light_quality_s.value = base
@@ -44,7 +55,7 @@ func _process(delta: float) -> void:
         %camera_speed_s.value = camera.max_speed
     
     if (%fixed_fps_switch as CheckButton).button_pressed:
-        _fixed_fps(delta)
+        _fixed_fps()
 
 func _on_camera_aperture_s_value_changed(value: float) -> void:
     %always_uniform_camera.aperture = value
@@ -73,7 +84,7 @@ func _on_max_sample_s_value_changed(value: float) -> void:
 func _on_light_quality_s_value_changed(value: float) -> void:
     %always_uniform_camera.quality = value
     %light_quality.text = str(value)
-    # %PostProcessShader.frame = 0
+    %PostProcessShader.frame = 0
 
 func _on_fixed_fps_edit_text_changed(text: String) -> void:
     var value: int = clampi(abs(int(text)), 1, 360)
@@ -97,8 +108,8 @@ func _on_camera_speed_s_value_changed(value: float) -> void:
 
 
 func _on_resolution_s_value_changed(value: float) -> void:
-    var num = int(value)
-    %resolution.text = "1/" + str(num)
-    (%RayTracing as SubViewportContainer).stretch_shrink = num
-    (%PostProcess as SubViewportContainer).stretch_shrink = num
-    (%Denoise as SubViewportContainer).stretch_shrink = num
+    stretch_shrink = int(value)
+    %resolution.text = "1/" + str(stretch_shrink)
+    (%RayTracing as SubViewportContainer).stretch_shrink = stretch_shrink
+    (%PostProcess as SubViewportContainer).stretch_shrink = stretch_shrink
+    (%Denoise as SubViewportContainer).stretch_shrink = stretch_shrink

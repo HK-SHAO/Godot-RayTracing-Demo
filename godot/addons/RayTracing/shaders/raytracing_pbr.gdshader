@@ -237,10 +237,10 @@ object nearest_object(vec3 p) {
                         vec3(0, 0, 1) // 切线空间法线
             )
         ),
-        object(SHAPE_SPHERE, NONE,
-            transform(  vec3(-1.0, -0.2, 0),
+        object(SHAPE_CYLINDER, NONE,
+            transform(  vec3(-1.0, -0.3, 0),
                         vec3(0, 0, 0),
-                        vec3(0.3, 0, 0)
+                        vec3(0.3, 0.33, 0)
             ),
             material(vec3(1.0, 0.1, 0.1),   // 基础色
                         0.9, // 粗糙度
@@ -270,7 +270,7 @@ object nearest_object(vec3 p) {
                         vec3(0, 0, 0),
                         vec3(0.3, 0, 0)
             ),
-            material(vec3(1.0, 1.0, 1.0),   // 基础色
+            material(vec3(0.9, 0.9, 0.9),   // 基础色
                         0.0, // 粗糙度
                         0.0, // 金属度
                         1.0, // 透明度
@@ -294,7 +294,7 @@ object nearest_object(vec3 p) {
             )
         ),
         object(SHAPE_BOX, NONE,
-            transform(  vec3(0, 0, 2),
+            transform(  vec3(0, 0, 5),
                         vec3(0, 0, 0),
                         vec3(2, 1, 0.2)
             ),
@@ -505,12 +505,12 @@ ray raytrace(ray r, inout random rand) {
     for (uint i = 0U; i < MAX_RAYTRACE; i++) {
         // 俄罗斯轮盘赌概率，防止光线过分的反复反射
         float inv_pdf = exp(float(i) * light_quality);
-        float roulette_prob = 1.0 / inv_pdf;
+        float roulette_prob = 1.0 - (1.0 / inv_pdf);
     
         // 光被吸收掉或者光线毙掉就不用继续了
         float visible = length(r.color.rgb*r.color.a);
-        if (visible <= 0.001 || noise(rand) > roulette_prob) {
-            r.color *= 0.0;
+        if (visible <= 0.001 || noise(rand) < roulette_prob) {
+            r.color *= roulette_prob;
             break;
         }
         
