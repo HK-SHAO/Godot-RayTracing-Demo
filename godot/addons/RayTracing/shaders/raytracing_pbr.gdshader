@@ -3,12 +3,16 @@ shader_type canvas_item;
 // 传入统一值
 uniform vec3 camera_position    = vec3(0.0, 0.0, 4.0);  // 传入摄像机的位置
 uniform mat3 camera_rotation    = mat3(1);              // 摄像机的旋转
+
 uniform float camera_aspect     = 2.0;                  // 画布长宽比
 uniform float camera_vfov       = 30.0;                 // 摄像机的纵向视野
 uniform float camera_focus      = 2.0;                  // 摄像机的对焦距离
 uniform float camera_aperture   = 0.005;                // 摄像机的光圈大小
 uniform float camera_gamma      = 0.2;                  // gamma 矫正值
 uniform float light_quality     = 0.2;                  // 间接光质量
+
+// 传入贴图
+uniform sampler2D environment_hdri;                     // 环境 HDRI 贴图
 
 // 配置常量
 const float TMIN        = 0.001;                        // 光开始传播的起始偏移，避免光线自相交
@@ -20,9 +24,6 @@ const uint MAX_RAYMARCH = 512U;                         // 最大光线步进次
 const uint MAX_RAYTRACE = 512U;                         // 最大光线追踪次数
 
 const float ENV_IOR = 1.000277;                         // 环境的折射率
-
-// 传入贴图
-uniform sampler2D environment_hdri;                     // 环境 HDRI 贴图
 
 // 枚举形状
 const int SHAPE_SPHERE      = 0;
