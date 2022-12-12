@@ -461,6 +461,9 @@ ray PBR(ray r, inout record rec, inout random rand) {
         } else {
             L = hemispheric_sampling(N, rand); // 漫反射
         }
+        
+        // 如果光射到表面下面就直接吸收掉
+        C *= (sign(dot(L, N*outer)) + 1.0) * 0.5;
     }
 
     C *= albedo;
