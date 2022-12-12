@@ -1267,7 +1267,11 @@ function alignMemory(size, alignment) {
 }
 
 function mmapAlloc(size) {
- abort("internal error: mmapAlloc called but `emscripten_builtin_memalign` native symbol not exported");
+ size = alignMemory(size, 65536);
+ var ptr = _emscripten_builtin_memalign(65536, size);
+ if (!ptr) return 0;
+ zeroMemory(ptr, size);
+ return ptr;
 }
 
 var MEMFS = {
@@ -5535,6 +5539,37 @@ function __localtime_js(time, tmPtr) {
  GROWABLE_HEAP_I32()[tmPtr + 32 >> 2] = dst;
 }
 
+function __mmap_js(len, prot, flags, fd, off, allocated) {
+ if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(33, 1, len, prot, flags, fd, off, allocated);
+ try {
+  var stream = FS.getStream(fd);
+  if (!stream) return -8;
+  var res = FS.mmap(stream, len, off, prot, flags);
+  var ptr = res.ptr;
+  GROWABLE_HEAP_I32()[allocated >> 2] = res.allocated;
+  return ptr;
+ } catch (e) {
+  if (typeof FS == "undefined" || !(e instanceof FS.ErrnoError)) throw e;
+  return -e.errno;
+ }
+}
+
+function __munmap_js(addr, len, prot, flags, fd, offset) {
+ if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(34, 1, addr, len, prot, flags, fd, offset);
+ try {
+  var stream = FS.getStream(fd);
+  if (stream) {
+   if (prot & 2) {
+    SYSCALLS.doMsync(addr, stream, len, flags, offset);
+   }
+   FS.munmap(stream);
+  }
+ } catch (e) {
+  if (typeof FS == "undefined" || !(e instanceof FS.ErrnoError)) throw e;
+  return -e.errno;
+ }
+}
+
 function allocateUTF8(str) {
  var size = lengthBytesUTF8(str) + 1;
  var ret = _malloc(size);
@@ -5543,7 +5578,7 @@ function allocateUTF8(str) {
 }
 
 function _tzset_impl(timezone, daylight, tzname) {
- if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(33, 1, timezone, daylight, tzname);
+ if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(35, 1, timezone, daylight, tzname);
  var currentYear = new Date().getFullYear();
  var winter = new Date(currentYear, 0, 1);
  var summer = new Date(currentYear, 6, 1);
@@ -6316,7 +6351,7 @@ function _emscripten_console_error(str) {
 }
 
 function _emscripten_force_exit(status) {
- if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(34, 1, status);
+ if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(36, 1, status);
  noExitRuntime = false;
  runtimeKeepaliveCounter = 0;
  _exit(status);
@@ -7820,7 +7855,7 @@ function _emscripten_unwind_to_js_event_loop() {
 }
 
 function _emscripten_webgl_destroy_context(contextHandle) {
- if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(35, 1, contextHandle);
+ if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(37, 1, contextHandle);
  if (GL.currentContext == contextHandle) GL.currentContext = 0;
  GL.deleteContext(contextHandle);
 }
@@ -7840,7 +7875,7 @@ function _emscripten_webgl_do_commit_frame() {
 }
 
 function _emscripten_webgl_create_context_proxied(target, attributes) {
- if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(36, 1, target, attributes);
+ if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(38, 1, target, attributes);
  return _emscripten_webgl_do_create_context(target, attributes);
 }
 
@@ -8031,7 +8066,7 @@ function _emscripten_webgl_do_create_context(target, attributes) {
 }
 
 function _emscripten_webgl_enable_extension(contextHandle, extension) {
- if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(37, 1, contextHandle, extension);
+ if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(39, 1, contextHandle, extension);
  var context = GL.getContext(contextHandle);
  var extString = UTF8ToString(extension);
  if (extString.startsWith("GL_")) extString = extString.substr(3);
@@ -8100,7 +8135,7 @@ function writeAsciiToMemory(str, buffer, dontAddNull) {
 }
 
 function _environ_get(__environ, environ_buf) {
- if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(38, 1, __environ, environ_buf);
+ if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(40, 1, __environ, environ_buf);
  var bufSize = 0;
  getEnvStrings().forEach(function(string, i) {
   var ptr = environ_buf + bufSize;
@@ -8112,7 +8147,7 @@ function _environ_get(__environ, environ_buf) {
 }
 
 function _environ_sizes_get(penviron_count, penviron_buf_size) {
- if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(39, 1, penviron_count, penviron_buf_size);
+ if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(41, 1, penviron_count, penviron_buf_size);
  var strings = getEnvStrings();
  GROWABLE_HEAP_U32()[penviron_count >> 2] = strings.length;
  var bufSize = 0;
@@ -8124,7 +8159,7 @@ function _environ_sizes_get(penviron_count, penviron_buf_size) {
 }
 
 function _fd_close(fd) {
- if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(40, 1, fd);
+ if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(42, 1, fd);
  try {
   var stream = SYSCALLS.getStreamFromFD(fd);
   FS.close(stream);
@@ -8136,7 +8171,7 @@ function _fd_close(fd) {
 }
 
 function _fd_fdstat_get(fd, pbuf) {
- if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(41, 1, fd, pbuf);
+ if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(43, 1, fd, pbuf);
  try {
   var stream = SYSCALLS.getStreamFromFD(fd);
   var type = stream.tty ? 2 : FS.isDir(stream.mode) ? 3 : FS.isLink(stream.mode) ? 7 : 4;
@@ -8163,7 +8198,7 @@ function doReadv(stream, iov, iovcnt, offset) {
 }
 
 function _fd_read(fd, iov, iovcnt, pnum) {
- if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(42, 1, fd, iov, iovcnt, pnum);
+ if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(44, 1, fd, iov, iovcnt, pnum);
  try {
   var stream = SYSCALLS.getStreamFromFD(fd);
   var num = doReadv(stream, iov, iovcnt);
@@ -8182,7 +8217,7 @@ function convertI32PairToI53Checked(lo, hi) {
 }
 
 function _fd_seek(fd, offset_low, offset_high, whence, newOffset) {
- if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(43, 1, fd, offset_low, offset_high, whence, newOffset);
+ if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(45, 1, fd, offset_low, offset_high, whence, newOffset);
  try {
   var offset = convertI32PairToI53Checked(offset_low, offset_high);
   if (isNaN(offset)) return 61;
@@ -8212,7 +8247,7 @@ function doWritev(stream, iov, iovcnt, offset) {
 }
 
 function _fd_write(fd, iov, iovcnt, pnum) {
- if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(44, 1, fd, iov, iovcnt, pnum);
+ if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(46, 1, fd, iov, iovcnt, pnum);
  try {
   var stream = SYSCALLS.getStreamFromFD(fd);
   var num = doWritev(stream, iov, iovcnt);
@@ -8229,7 +8264,7 @@ function _getTempRet0() {
 }
 
 function _getaddrinfo(node, service, hint, out) {
- if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(45, 1, node, service, hint, out);
+ if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(47, 1, node, service, hint, out);
  var addrs = [];
  var canon = null;
  var addr = 0;
@@ -8749,14 +8784,14 @@ var GodotAudio = {
 };
 
 function _godot_audio_capture_start() {
- if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(46, 1);
+ if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(48, 1);
  return GodotAudio.create_input(function(input) {
   input.connect(GodotAudio.driver.get_node());
  });
 }
 
 function _godot_audio_capture_stop() {
- if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(47, 1);
+ if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(49, 1);
  if (GodotAudio.input) {
   const tracks = GodotAudio.input["mediaStream"]["getTracks"]();
   for (let i = 0; i < tracks.length; i++) {
@@ -8781,7 +8816,7 @@ function _godot_audio_init(p_mix_rate, p_latency, p_state_change, p_latency_upda
 }
 
 function _godot_audio_is_available() {
- if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(48, 1);
+ if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(50, 1);
  if (!(window.AudioContext || window.webkitAudioContext)) {
   return 0;
  }
@@ -11172,7 +11207,7 @@ function _godot_js_wrapper_object_unref(p_id) {
 var GodotWebGL2 = {};
 
 function _godot_webgl2_glFramebufferTextureMultiviewOVR(target, attachment, texture, level, base_view_index, num_views) {
- if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(49, 1, target, attachment, texture, level, base_view_index, num_views);
+ if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(51, 1, target, attachment, texture, level, base_view_index, num_views);
  const context = GL.currentContext;
  if (typeof context.multiviewExt === "undefined") {
   const ext = context.GLctx.getExtension("OVR_multiview2");
@@ -11182,15 +11217,21 @@ function _godot_webgl2_glFramebufferTextureMultiviewOVR(target, attachment, text
   }
   context.multiviewExt = ext;
  }
- context.multiviewExt.framebufferTextureMultiviewOVR(target, attachment, GL.textures[texture], level, base_view_index, num_views);
+ const ext = context.multiviewExt;
+ ext.framebufferTextureMultiviewOVR(target, attachment, GL.textures[texture], level, base_view_index, num_views);
 }
 
 var GodotWebXR = {
  gl: null,
  session: null,
+ gl_binding: null,
+ layer: null,
  space: null,
  frame: null,
  pose: null,
+ view_count: 1,
+ input_sources: [ , , , , , , , , , , , , , , ,  ],
+ touches: [ , , , ,  ],
  orig_requestAnimationFrame: null,
  requestAnimationFrame: callback => {
   if (GodotWebXR.session && GodotWebXR.space) {
@@ -11220,66 +11261,112 @@ var GodotWebXR = {
    Browser.mainLoop.resume();
   }, 0);
  },
- controllers: [],
- sampleControllers: () => {
-  if (!GodotWebXR.session || !GodotWebXR.frame) {
-   return;
+ getLayer: () => {
+  const new_view_count = GodotWebXR.pose ? GodotWebXR.pose.views.length : 1;
+  let layer = GodotWebXR.layer;
+  if (layer && GodotWebXR.view_count === new_view_count) {
+   return layer;
   }
-  let other_index = 2;
-  const controllers = [];
-  GodotWebXR.session.inputSources.forEach(input_source => {
-   if (input_source.targetRayMode === "tracked-pointer") {
-    if (input_source.handedness === "right") {
-     controllers[1] = input_source;
-    } else if (input_source.handedness === "left" || !controllers[0]) {
-     controllers[0] = input_source;
-    }
-   } else {
-    controllers[other_index++] = input_source;
-   }
+  if (!GodotWebXR.session || !GodotWebXR.gl_binding) {
+   return null;
+  }
+  const gl = GodotWebXR.gl;
+  layer = GodotWebXR.gl_binding.createProjectionLayer({
+   textureType: new_view_count > 1 ? "texture-array" : "texture",
+   colorFormat: gl.RGBA8,
+   depthFormat: gl.DEPTH_COMPONENT24
   });
-  GodotWebXR.controllers = controllers;
+  GodotWebXR.session.updateRenderState({
+   layers: [ layer ]
+  });
+  GodotWebXR.layer = layer;
+  GodotWebXR.view_count = new_view_count;
+  return layer;
  },
- getControllerId: input_source => GodotWebXR.controllers.indexOf(input_source)
+ getSubImage: () => {
+  if (!GodotWebXR.pose) {
+   return null;
+  }
+  const layer = GodotWebXR.getLayer();
+  if (layer === null) {
+   return null;
+  }
+  return GodotWebXR.gl_binding.getViewSubImage(layer, GodotWebXR.pose.views[0]);
+ },
+ getTextureId: texture => {
+  if (texture.name !== undefined) {
+   return texture.name;
+  }
+  const id = GL.getNewId(GL.textures);
+  texture.name = id;
+  GL.textures[id] = texture;
+  return id;
+ },
+ addInputSource: input_source => {
+  let name = -1;
+  if (input_source.targetRayMode === "tracked-pointer" && input_source.handedness === "left") {
+   name = 0;
+  } else if (input_source.targetRayMode === "tracked-pointer" && input_source.handedness === "right") {
+   name = 1;
+  } else {
+   for (let i = 2; i < 16; i++) {
+    if (!GodotWebXR.input_sources[i]) {
+     name = i;
+     break;
+    }
+   }
+  }
+  if (name >= 0) {
+   GodotWebXR.input_sources[name] = input_source;
+   input_source.name = name;
+   if (input_source.targetRayMode === "screen") {
+    let touch_index = -1;
+    for (let i = 0; i < 5; i++) {
+     if (!GodotWebXR.touches[i]) {
+      touch_index = i;
+      break;
+     }
+    }
+    if (touch_index >= 0) {
+     GodotWebXR.touches[touch_index] = input_source;
+     input_source.touch_index = touch_index;
+    }
+   }
+  }
+  return name;
+ },
+ removeInputSource: input_source => {
+  if (input_source.name !== undefined) {
+   const name = input_source.name;
+   if (name >= 0 && name < 16) {
+    GodotWebXR.input_sources[name] = null;
+   }
+   if (input_source.touch_index !== undefined) {
+    const touch_index = input_source.touch_index;
+    if (touch_index >= 0 && touch_index < 5) {
+     GodotWebXR.touches[touch_index] = null;
+    }
+   }
+   return name;
+  }
+  return -1;
+ },
+ getInputSourceId: input_source => {
+  if (input_source !== undefined) {
+   return input_source.name;
+  }
+  return -1;
+ },
+ getTouchIndex: input_source => {
+  if (input_source.touch_index !== undefined) {
+   return input_source.touch_index;
+  }
+  return -1;
+ }
 };
 
-function _godot_webxr_commit(p_texture) {
- if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(50, 1, p_texture);
- if (!GodotWebXR.session || !GodotWebXR.pose) {
-  return;
- }
- const glLayer = GodotWebXR.session.renderState.baseLayer;
- const views = GodotWebXR.pose.views;
- const gl = GodotWebXR.gl;
- const texture = GL.textures[p_texture];
- const orig_framebuffer = gl.getParameter(gl.FRAMEBUFFER_BINDING);
- const orig_read_framebuffer = gl.getParameter(gl.READ_FRAMEBUFFER_BINDING);
- const orig_read_buffer = gl.getParameter(gl.READ_BUFFER);
- const orig_draw_framebuffer = gl.getParameter(gl.DRAW_FRAMEBUFFER_BINDING);
- gl.bindFramebuffer(gl.FRAMEBUFFER, null);
- for (let i = 0; i < views.length; i++) {
-  const viewport = glLayer.getViewport(views[i]);
-  const read_fbo = gl.createFramebuffer();
-  gl.bindFramebuffer(gl.READ_FRAMEBUFFER, read_fbo);
-  if (views.length > 1) {
-   gl.framebufferTextureLayer(gl.READ_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, texture, 0, i);
-  } else {
-   gl.framebufferTexture2D(gl.READ_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
-  }
-  gl.readBuffer(gl.COLOR_ATTACHMENT0);
-  gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, glLayer.framebuffer);
-  gl.blitFramebuffer(0, 0, viewport.width, viewport.height, viewport.x, viewport.y + viewport.height, viewport.x + viewport.width, viewport.y, gl.COLOR_BUFFER_BIT, gl.NEAREST);
-  gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null);
-  gl.deleteFramebuffer(read_fbo);
- }
- gl.bindFramebuffer(gl.FRAMEBUFFER, orig_framebuffer);
- gl.bindFramebuffer(gl.READ_FRAMEBUFFER, orig_read_framebuffer);
- gl.readBuffer(orig_read_buffer);
- gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, orig_draw_framebuffer);
-}
-
-function _godot_webxr_get_bounds_geometry() {
- if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(51, 1);
+function _godot_webxr_get_bounds_geometry(r_points) {
+ if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(52, 1, r_points);
  if (!GodotWebXR.space || !GodotWebXR.space.boundsGeometry) {
   return 0;
  }
@@ -11287,7 +11374,7 @@ function _godot_webxr_get_bounds_geometry() {
  if (point_count === 0) {
   return 0;
  }
- const buf = GodotRuntime.malloc((point_count * 3 + 1) * 4);
+ const buf = GodotRuntime.malloc(point_count * 3 * 4);
  GodotRuntime.setHeapValue(buf, point_count, "i32");
  for (let i = 0; i < point_count; i++) {
   const point = GodotWebXR.space.boundsGeometry[i];
@@ -11295,133 +11382,91 @@ function _godot_webxr_get_bounds_geometry() {
   GodotRuntime.setHeapValue(buf + (i * 3 + 2) * 4, point.y, "float");
   GodotRuntime.setHeapValue(buf + (i * 3 + 3) * 4, point.z, "float");
  }
- return buf;
+ GodotRuntime.setHeapValue(r_points, buf, "i32");
+ return point_count;
 }
 
-function _godot_webxr_get_controller_axes(p_controller) {
- if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(52, 1, p_controller);
- if (GodotWebXR.controllers.length === 0) {
+function _godot_webxr_get_color_texture() {
+ if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(53, 1);
+ const subimage = GodotWebXR.getSubImage();
+ if (subimage === null) {
   return 0;
  }
- const controller = GodotWebXR.controllers[p_controller];
- if (!controller || !controller.gamepad) {
-  return 0;
- }
- const axes_count = controller.gamepad.axes.length;
- const buf = GodotRuntime.malloc((axes_count + 1) * 4);
- GodotRuntime.setHeapValue(buf, axes_count, "i32");
- for (let i = 0; i < axes_count; i++) {
-  let value = controller.gamepad.axes[i];
-  if (i === 1 || i === 3) {
-   value *= -1;
-  }
-  GodotRuntime.setHeapValue(buf + 4 + i * 4, value, "float");
- }
- return buf;
+ return GodotWebXR.getTextureId(subimage.colorTexture);
 }
 
-function _godot_webxr_get_controller_buttons(p_controller) {
- if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(53, 1, p_controller);
- if (GodotWebXR.controllers.length === 0) {
-  return 0;
- }
- const controller = GodotWebXR.controllers[p_controller];
- if (!controller || !controller.gamepad) {
-  return 0;
- }
- const button_count = controller.gamepad.buttons.length;
- const buf = GodotRuntime.malloc((button_count + 1) * 4);
- GodotRuntime.setHeapValue(buf, button_count, "i32");
- for (let i = 0; i < button_count; i++) {
-  GodotRuntime.setHeapValue(buf + 4 + i * 4, controller.gamepad.buttons[i].value, "float");
- }
- return buf;
-}
-
-function _godot_webxr_get_controller_count() {
+function _godot_webxr_get_depth_texture() {
  if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(54, 1);
- if (!GodotWebXR.session || !GodotWebXR.frame) {
+ const subimage = GodotWebXR.getSubImage();
+ if (subimage === null) {
   return 0;
  }
- return GodotWebXR.controllers.length;
+ if (!subimage.depthStencilTexture) {
+  return 0;
+ }
+ return GodotWebXR.getTextureId(subimage.depthStencilTexture);
 }
 
-function _godot_webxr_get_controller_transform(p_controller) {
- if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(55, 1, p_controller);
- if (!GodotWebXR.session || !GodotWebXR.frame) {
-  return 0;
+function _godot_webxr_get_projection_for_view(p_view, r_transform) {
+ if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(55, 1, p_view, r_transform);
+ if (!GodotWebXR.session || !GodotWebXR.pose) {
+  return false;
  }
- const controller = GodotWebXR.controllers[p_controller];
- if (!controller) {
-  return 0;
- }
- const frame = GodotWebXR.frame;
- const space = GodotWebXR.space;
- const pose = frame.getPose(controller.targetRaySpace, space);
- if (!pose) {
-  return 0;
- }
- const matrix = pose.transform.matrix;
- const buf = GodotRuntime.malloc(16 * 4);
+ const matrix = GodotWebXR.pose.views[p_view].projectionMatrix;
  for (let i = 0; i < 16; i++) {
-  GodotRuntime.setHeapValue(buf + i * 4, matrix[i], "float");
+  GodotRuntime.setHeapValue(r_transform + i * 4, matrix[i], "float");
  }
- return buf;
+ return true;
 }
 
-function _godot_webxr_get_projection_for_eye(p_eye) {
- if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(56, 1, p_eye);
- if (!GodotWebXR.session || !GodotWebXR.pose) {
-  return 0;
+function _godot_webxr_get_render_target_size(r_size) {
+ if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(56, 1, r_size);
+ const subimage = GodotWebXR.getSubImage();
+ if (subimage === null) {
+  return false;
  }
- const view_index = p_eye === 2 ? 1 : 0;
- const matrix = GodotWebXR.pose.views[view_index].projectionMatrix;
- const buf = GodotRuntime.malloc(16 * 4);
- for (let i = 0; i < 16; i++) {
-  GodotRuntime.setHeapValue(buf + i * 4, matrix[i], "float");
- }
- return buf;
+ GodotRuntime.setHeapValue(r_size + 0, subimage.viewport.width, "i32");
+ GodotRuntime.setHeapValue(r_size + 4, subimage.viewport.height, "i32");
+ return true;
 }
 
-function _godot_webxr_get_render_target_size() {
- if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(57, 1);
+function _godot_webxr_get_transform_for_view(p_view, r_transform) {
+ if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(57, 1, p_view, r_transform);
  if (!GodotWebXR.session || !GodotWebXR.pose) {
-  return 0;
- }
- const glLayer = GodotWebXR.session.renderState.baseLayer;
- const view = GodotWebXR.pose.views[0];
- const viewport = glLayer.getViewport(view);
- const buf = GodotRuntime.malloc(2 * 4);
- GodotRuntime.setHeapValue(buf + 0, viewport.width, "i32");
- GodotRuntime.setHeapValue(buf + 4, viewport.height, "i32");
- return buf;
-}
-
-function _godot_webxr_get_transform_for_eye(p_eye) {
- if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(58, 1, p_eye);
- if (!GodotWebXR.session || !GodotWebXR.pose) {
-  return 0;
+  return false;
  }
  const views = GodotWebXR.pose.views;
  let matrix;
- if (p_eye === 0) {
-  matrix = GodotWebXR.pose.transform.matrix;
+ if (p_view >= 0) {
+  matrix = views[p_view].transform.matrix;
  } else {
-  matrix = views[p_eye - 1].transform.matrix;
+  matrix = GodotWebXR.pose.transform.matrix;
  }
- const buf = GodotRuntime.malloc(16 * 4);
  for (let i = 0; i < 16; i++) {
-  GodotRuntime.setHeapValue(buf + i * 4, matrix[i], "float");
+  GodotRuntime.setHeapValue(r_transform + i * 4, matrix[i], "float");
  }
- return buf;
+ return true;
+}
+
+function _godot_webxr_get_velocity_texture() {
+ if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(58, 1);
+ const subimage = GodotWebXR.getSubImage();
+ if (subimage === null) {
+  return 0;
+ }
+ if (!subimage.motionVectorTexture) {
+  return 0;
+ }
+ return GodotWebXR.getTextureId(subimage.motionVectorTexture);
 }
 
 function _godot_webxr_get_view_count() {
  if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(59, 1);
  if (!GodotWebXR.session || !GodotWebXR.pose) {
-  return 0;
+  return 1;
  }
- return GodotWebXR.pose.views.length;
+ const view_count = GodotWebXR.pose.views.length;
+ return view_count > 0 ? view_count : 1;
 }
 
 function _godot_webxr_get_visibility_state() {
@@ -11432,8 +11477,8 @@ function _godot_webxr_get_visibility_state() {
  return GodotRuntime.allocString(GodotWebXR.session.visibilityState);
 }
 
-function _godot_webxr_initialize(p_session_mode, p_required_features, p_optional_features, p_requested_reference_spaces, p_on_session_started, p_on_session_ended, p_on_session_failed, p_on_controller_changed, p_on_input_event, p_on_simple_event) {
- if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(61, 1, p_session_mode, p_required_features, p_optional_features, p_requested_reference_spaces, p_on_session_started, p_on_session_ended, p_on_session_failed, p_on_controller_changed, p_on_input_event, p_on_simple_event);
+function _godot_webxr_initialize(p_session_mode, p_required_features, p_optional_features, p_requested_reference_spaces, p_on_session_started, p_on_session_ended, p_on_session_failed, p_on_input_event, p_on_simple_event) {
+ if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(61, 1, p_session_mode, p_required_features, p_optional_features, p_requested_reference_spaces, p_on_session_started, p_on_session_ended, p_on_session_failed, p_on_input_event, p_on_simple_event);
  GodotWebXR.monkeyPatchRequestAnimationFrame(true);
  const session_mode = GodotRuntime.parseString(p_session_mode);
  const required_features = GodotRuntime.parseString(p_required_features).split(",").map(s => s.trim()).filter(s => s !== "");
@@ -11442,7 +11487,6 @@ function _godot_webxr_initialize(p_session_mode, p_required_features, p_optional
  const onstarted = GodotRuntime.get_func(p_on_session_started);
  const onended = GodotRuntime.get_func(p_on_session_ended);
  const onfailed = GodotRuntime.get_func(p_on_session_failed);
- const oncontroller = GodotRuntime.get_func(p_on_controller_changed);
  const oninputevent = GodotRuntime.get_func(p_on_input_event);
  const onsimpleevent = GodotRuntime.get_func(p_on_simple_event);
  const session_init = {};
@@ -11458,23 +11502,14 @@ function _godot_webxr_initialize(p_session_mode, p_required_features, p_optional
    onended();
   });
   session.addEventListener("inputsourceschange", function(evt) {
-   let controller_changed = false;
-   [ evt.added, evt.removed ].forEach(lst => {
-    lst.forEach(input_source => {
-     if (input_source.targetRayMode === "tracked-pointer") {
-      controller_changed = true;
-     }
-    });
-   });
-   if (controller_changed) {
-    oncontroller();
-   }
+   evt.added.forEach(GodotWebXR.addInputSource);
+   evt.removed.forEach(GodotWebXR.removeInputSource);
   });
-  [ "selectstart", "select", "selectend", "squeezestart", "squeeze", "squeezeend" ].forEach(input_event => {
+  [ "selectstart", "selectend", "squeezestart", "squeezeend" ].forEach((input_event, index) => {
    session.addEventListener(input_event, function(evt) {
-    const c_str = GodotRuntime.allocString(input_event);
-    oninputevent(c_str, GodotWebXR.getControllerId(evt.inputSource));
-    GodotRuntime.free(c_str);
+    GodotWebXR.frame = evt.frame;
+    oninputevent(index, GodotWebXR.getInputSourceId(evt.inputSource));
+    GodotWebXR.frame = null;
    });
   });
   session.addEventListener("visibilitychange", function(evt) {
@@ -11486,9 +11521,8 @@ function _godot_webxr_initialize(p_session_mode, p_required_features, p_optional
   const gl = GL.getContext(gl_context_handle).GLctx;
   GodotWebXR.gl = gl;
   gl.makeXRCompatible().then(function() {
-   session.updateRenderState({
-    baseLayer: new XRWebGLLayer(session, gl)
-   });
+   GodotWebXR.gl_binding = new XRWebGLBinding(session, gl);
+   GodotWebXR.getLayer();
    function onReferenceSpaceSuccess(reference_space, reference_space_type) {
     GodotWebXR.space = reference_space;
     reference_space.onreset = function(evt) {
@@ -11530,16 +11564,8 @@ function _godot_webxr_initialize(p_session_mode, p_required_features, p_optional
  });
 }
 
-function _godot_webxr_is_controller_connected(p_controller) {
- if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(62, 1, p_controller);
- if (!GodotWebXR.session || !GodotWebXR.frame) {
-  return false;
- }
- return !!GodotWebXR.controllers[p_controller];
-}
-
 function _godot_webxr_is_session_supported(p_session_mode, p_callback) {
- if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(63, 1, p_session_mode, p_callback);
+ if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(62, 1, p_session_mode, p_callback);
  const session_mode = GodotRuntime.parseString(p_session_mode);
  const cb = GodotRuntime.get_func(p_callback);
  if (navigator.xr) {
@@ -11556,26 +11582,97 @@ function _godot_webxr_is_session_supported(p_session_mode, p_callback) {
 }
 
 function _godot_webxr_is_supported() {
- if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(64, 1);
+ if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(63, 1);
  return !!navigator.xr;
 }
 
-function _godot_webxr_sample_controller_data() {
- if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(65, 1);
- GodotWebXR.sampleControllers();
-}
-
 function _godot_webxr_uninitialize() {
- if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(66, 1);
+ if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(64, 1);
  if (GodotWebXR.session) {
   GodotWebXR.session.end().catch(e => {});
  }
  GodotWebXR.session = null;
+ GodotWebXR.gl_binding = null;
+ GodotWebXR.layer = null;
  GodotWebXR.space = null;
  GodotWebXR.frame = null;
  GodotWebXR.pose = null;
+ GodotWebXR.view_count = 1;
+ GodotWebXR.input_sources = new Array(16);
+ GodotWebXR.touches = new Array(5);
  GodotWebXR.monkeyPatchRequestAnimationFrame(false);
  GodotWebXR.pauseResumeMainLoop();
+}
+
+function _godot_webxr_update_input_source(p_input_source_id, r_target_pose, r_target_ray_mode, r_touch_index, r_has_grip_pose, r_grip_pose, r_has_standard_mapping, r_button_count, r_buttons, r_axes_count, r_axes) {
+ if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(65, 1, p_input_source_id, r_target_pose, r_target_ray_mode, r_touch_index, r_has_grip_pose, r_grip_pose, r_has_standard_mapping, r_button_count, r_buttons, r_axes_count, r_axes);
+ if (!GodotWebXR.session || !GodotWebXR.frame) {
+  return 0;
+ }
+ if (p_input_source_id < 0 || p_input_source_id >= GodotWebXR.input_sources.length || !GodotWebXR.input_sources[p_input_source_id]) {
+  return false;
+ }
+ const input_source = GodotWebXR.input_sources[p_input_source_id];
+ const frame = GodotWebXR.frame;
+ const space = GodotWebXR.space;
+ const target_pose = frame.getPose(input_source.targetRaySpace, space);
+ if (!target_pose) {
+  return false;
+ }
+ const target_pose_matrix = target_pose.transform.matrix;
+ for (let i = 0; i < 16; i++) {
+  GodotRuntime.setHeapValue(r_target_pose + i * 4, target_pose_matrix[i], "float");
+ }
+ let target_ray_mode = 0;
+ switch (input_source.targetRayMode) {
+ case "gaze":
+  target_ray_mode = 1;
+  break;
+
+ case "tracked-pointer":
+  target_ray_mode = 2;
+  break;
+
+ case "screen":
+  target_ray_mode = 3;
+  break;
+
+ default:
+ }
+ GodotRuntime.setHeapValue(r_target_ray_mode, target_ray_mode, "i32");
+ GodotRuntime.setHeapValue(r_touch_index, GodotWebXR.getTouchIndex(input_source), "i32");
+ let has_grip_pose = false;
+ if (input_source.gripSpace) {
+  const grip_pose = frame.getPose(input_source.gripSpace, space);
+  if (grip_pose) {
+   const grip_pose_matrix = grip_pose.transform.matrix;
+   for (let i = 0; i < 16; i++) {
+    GodotRuntime.setHeapValue(r_grip_pose + i * 4, grip_pose_matrix[i], "float");
+   }
+   has_grip_pose = true;
+  }
+ }
+ GodotRuntime.setHeapValue(r_has_grip_pose, has_grip_pose ? 1 : 0, "i32");
+ let has_standard_mapping = false;
+ let button_count = 0;
+ let axes_count = 0;
+ if (input_source.gamepad) {
+  if (input_source.gamepad.mapping === "xr-standard") {
+   has_standard_mapping = true;
+  }
+  button_count = Math.min(input_source.gamepad.buttons.length, 10);
+  for (let i = 0; i < button_count; i++) {
+   GodotRuntime.setHeapValue(r_buttons + i * 4, input_source.gamepad.buttons[i].value, "float");
+  }
+  axes_count = Math.min(input_source.gamepad.axes.length, 10);
+  for (let i = 0; i < axes_count; i++) {
+   GodotRuntime.setHeapValue(r_axes + i * 4, input_source.gamepad.axes[i], "float");
+  }
+ }
+ GodotRuntime.setHeapValue(r_has_standard_mapping, has_standard_mapping ? 1 : 0, "i32");
+ GodotRuntime.setHeapValue(r_button_count, button_count, "i32");
+ GodotRuntime.setHeapValue(r_axes_count, axes_count, "i32");
+ return true;
 }
 
 function _setTempRet0(val) {
@@ -12472,7 +12569,7 @@ GodotOS.atexit(function(resolve, reject) {
 
 GodotJSWrapper.proxies = new Map();
 
-var proxiedFunctionTable = [ null, _proc_exit, exitOnMainThread, pthreadCreateProxied, ___syscall__newselect, ___syscall_accept4, ___syscall_bind, ___syscall_chdir, ___syscall_chmod, ___syscall_connect, ___syscall_faccessat, ___syscall_fcntl64, ___syscall_getcwd, ___syscall_getdents64, ___syscall_getsockname, ___syscall_getsockopt, ___syscall_ioctl, ___syscall_listen, ___syscall_lstat64, ___syscall_mkdirat, ___syscall_newfstatat, ___syscall_openat, ___syscall_poll, ___syscall_readlinkat, ___syscall_recvfrom, ___syscall_renameat, ___syscall_rmdir, ___syscall_sendto, ___syscall_socket, ___syscall_stat64, ___syscall_statfs64, ___syscall_symlink, ___syscall_unlinkat, _tzset_impl, _emscripten_force_exit, _emscripten_webgl_destroy_context, _emscripten_webgl_create_context_proxied, _emscripten_webgl_enable_extension, _environ_get, _environ_sizes_get, _fd_close, _fd_fdstat_get, _fd_read, _fd_seek, _fd_write, _getaddrinfo, _godot_audio_capture_start, _godot_audio_capture_stop, _godot_audio_is_available, _godot_webgl2_glFramebufferTextureMultiviewOVR, _godot_webxr_commit, _godot_webxr_get_bounds_geometry, _godot_webxr_get_controller_axes, _godot_webxr_get_controller_buttons, _godot_webxr_get_controller_count, _godot_webxr_get_controller_transform, _godot_webxr_get_projection_for_eye, _godot_webxr_get_render_target_size, _godot_webxr_get_transform_for_eye, _godot_webxr_get_view_count, _godot_webxr_get_visibility_state, _godot_webxr_initialize, _godot_webxr_is_controller_connected, _godot_webxr_is_session_supported, _godot_webxr_is_supported, _godot_webxr_sample_controller_data, _godot_webxr_uninitialize ];
+var proxiedFunctionTable = [ null, _proc_exit, exitOnMainThread, pthreadCreateProxied, ___syscall__newselect, ___syscall_accept4, ___syscall_bind, ___syscall_chdir, ___syscall_chmod, ___syscall_connect, ___syscall_faccessat, ___syscall_fcntl64, ___syscall_getcwd, ___syscall_getdents64, ___syscall_getsockname, ___syscall_getsockopt, ___syscall_ioctl, ___syscall_listen, ___syscall_lstat64, ___syscall_mkdirat, ___syscall_newfstatat, ___syscall_openat, ___syscall_poll, ___syscall_readlinkat, ___syscall_recvfrom, ___syscall_renameat, ___syscall_rmdir, ___syscall_sendto, ___syscall_socket, ___syscall_stat64, ___syscall_statfs64, ___syscall_symlink, ___syscall_unlinkat, __mmap_js, __munmap_js, _tzset_impl, _emscripten_force_exit, _emscripten_webgl_destroy_context, _emscripten_webgl_create_context_proxied, _emscripten_webgl_enable_extension, _environ_get, _environ_sizes_get, _fd_close, _fd_fdstat_get, _fd_read, _fd_seek, _fd_write, _getaddrinfo, _godot_audio_capture_start, _godot_audio_capture_stop, _godot_audio_is_available, _godot_webgl2_glFramebufferTextureMultiviewOVR, _godot_webxr_get_bounds_geometry, _godot_webxr_get_color_texture, _godot_webxr_get_depth_texture, _godot_webxr_get_projection_for_view, _godot_webxr_get_render_target_size, _godot_webxr_get_transform_for_view, _godot_webxr_get_velocity_texture, _godot_webxr_get_view_count, _godot_webxr_get_visibility_state, _godot_webxr_initialize, _godot_webxr_is_session_supported, _godot_webxr_is_supported, _godot_webxr_uninitialize, _godot_webxr_update_input_source ];
 
 var ASSERTIONS = true;
 
@@ -12527,6 +12624,8 @@ var asmLibraryArg = {
  "_emscripten_throw_longjmp": __emscripten_throw_longjmp,
  "_gmtime_js": __gmtime_js,
  "_localtime_js": __localtime_js,
+ "_mmap_js": __mmap_js,
+ "_munmap_js": __munmap_js,
  "_tzset_js": __tzset_js,
  "abort": _abort,
  "emscripten_cancel_main_loop": _emscripten_cancel_main_loop,
@@ -12784,23 +12883,20 @@ var asmLibraryArg = {
  "godot_js_wrapper_object_setvar": _godot_js_wrapper_object_setvar,
  "godot_js_wrapper_object_unref": _godot_js_wrapper_object_unref,
  "godot_webgl2_glFramebufferTextureMultiviewOVR": _godot_webgl2_glFramebufferTextureMultiviewOVR,
- "godot_webxr_commit": _godot_webxr_commit,
  "godot_webxr_get_bounds_geometry": _godot_webxr_get_bounds_geometry,
- "godot_webxr_get_controller_axes": _godot_webxr_get_controller_axes,
- "godot_webxr_get_controller_buttons": _godot_webxr_get_controller_buttons,
- "godot_webxr_get_controller_count": _godot_webxr_get_controller_count,
- "godot_webxr_get_controller_transform": _godot_webxr_get_controller_transform,
- "godot_webxr_get_projection_for_eye": _godot_webxr_get_projection_for_eye,
+ "godot_webxr_get_color_texture": _godot_webxr_get_color_texture,
+ "godot_webxr_get_depth_texture": _godot_webxr_get_depth_texture,
+ "godot_webxr_get_projection_for_view": _godot_webxr_get_projection_for_view,
  "godot_webxr_get_render_target_size": _godot_webxr_get_render_target_size,
- "godot_webxr_get_transform_for_eye": _godot_webxr_get_transform_for_eye,
+ "godot_webxr_get_transform_for_view": _godot_webxr_get_transform_for_view,
+ "godot_webxr_get_velocity_texture": _godot_webxr_get_velocity_texture,
  "godot_webxr_get_view_count": _godot_webxr_get_view_count,
  "godot_webxr_get_visibility_state": _godot_webxr_get_visibility_state,
  "godot_webxr_initialize": _godot_webxr_initialize,
- "godot_webxr_is_controller_connected": _godot_webxr_is_controller_connected,
  "godot_webxr_is_session_supported": _godot_webxr_is_session_supported,
  "godot_webxr_is_supported": _godot_webxr_is_supported,
- "godot_webxr_sample_controller_data": _godot_webxr_sample_controller_data,
  "godot_webxr_uninitialize": _godot_webxr_uninitialize,
+ "godot_webxr_update_input_source": _godot_webxr_update_input_source,
  "invoke_ii": invoke_ii,
  "invoke_iii": invoke_iii,
  "invoke_iiii": invoke_iiii,
@@ -12850,6 +12946,8 @@ var __emwebxr_on_simple_event = Module["__emwebxr_on_simple_event"] = createExpo
 var _pthread_self = Module["_pthread_self"] = createExportWrapper("pthread_self");
 
 var __emscripten_tls_init = Module["__emscripten_tls_init"] = createExportWrapper("_emscripten_tls_init");
+
+var _emscripten_builtin_memalign = Module["_emscripten_builtin_memalign"] = createExportWrapper("emscripten_builtin_memalign");
 
 var _emscripten_webgl_get_current_context = Module["_emscripten_webgl_get_current_context"] = createExportWrapper("emscripten_webgl_get_current_context");
 
@@ -13049,6 +13147,8 @@ var dynCall_iiji = Module["dynCall_iiji"] = createExportWrapper("dynCall_iiji");
 
 var dynCall_vijiiiii = Module["dynCall_vijiiiii"] = createExportWrapper("dynCall_vijiiiii");
 
+var dynCall_vijjjii = Module["dynCall_vijjjii"] = createExportWrapper("dynCall_vijjjii");
+
 var dynCall_viijd = Module["dynCall_viijd"] = createExportWrapper("dynCall_viijd");
 
 var dynCall_diij = Module["dynCall_diij"] = createExportWrapper("dynCall_diij");
@@ -13192,8 +13292,6 @@ var dynCall_vijiifiififff = Module["dynCall_vijiifiififff"] = createExportWrappe
 var dynCall_vijifffij = Module["dynCall_vijifffij"] = createExportWrapper("dynCall_vijifffij");
 
 var dynCall_viijjjiifjii = Module["dynCall_viijjjiifjii"] = createExportWrapper("dynCall_viijjjiifjii");
-
-var dynCall_vijjjii = Module["dynCall_vijjjii"] = createExportWrapper("dynCall_vijjjii");
 
 var dynCall_fijj = Module["dynCall_fijj"] = createExportWrapper("dynCall_fijj");
 
@@ -13517,19 +13615,19 @@ const Features = { // eslint-disable-line no-unused-vars
 	getMissingFeatures: function () {
 		const missing = [];
 		if (!Features.isWebGLAvailable(2)) {
-			missing.push('WebGL2');
+			missing.push('WebGL2 - Check web browser configuration and hardware support');
 		}
 		if (!Features.isFetchAvailable()) {
-			missing.push('Fetch');
+			missing.push('Fetch - Check web browser version');
 		}
 		if (!Features.isSecureContext()) {
-			missing.push('Secure Context');
+			missing.push('Secure Context - Check web server configuration (use HTTPS)');
 		}
 		if (!Features.isCrossOriginIsolated()) {
-			missing.push('Cross Origin Isolation');
+			missing.push('Cross Origin Isolation - Check web server configuration (send correct headers)');
 		}
 		if (!Features.isSharedArrayBufferAvailable()) {
-			missing.push('SharedArrayBuffer');
+			missing.push('SharedArrayBuffer - Check web server configuration (send correct headers)');
 		}
 		// Audio is normally optional since we have a dummy fallback.
 		return missing;
