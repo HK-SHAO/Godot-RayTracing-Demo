@@ -1,5 +1,9 @@
 shader_type canvas_item;
 
+// SCREEN_TEXTURE removed in Godot 4 beta 14
+// Need to use this now:
+uniform sampler2D SCREEN_TEXTURE : hint_screen_texture;
+
 // 传入统一值
 uniform vec3 camera_position    = vec3(0.0, 0.0, 4.0);  // 传入摄像机的位置
 uniform mat3 camera_rotation    = mat3(1);              // 摄像机的旋转
@@ -8,7 +12,7 @@ uniform float camera_aspect     = 2.0;                  // 画布长宽比
 uniform float camera_vfov       = 30.0;                 // 摄像机的纵向视野
 uniform float camera_focus      = 2.0;                  // 摄像机的对焦距离
 uniform float camera_aperture   = 0.005;                // 摄像机的光圈大小
-uniform float camera_exposure   = 1.0;                  // 摄像机曝光值
+uniform float camera_exposure   = 1.6;                  // 摄像机曝光值
 uniform float camera_gamma      = 2.2;                  // gamma 矫正值
 uniform float light_quality     = 0.2;                  // 间接光质量
 uniform float frame             = 1.0;                  // 降噪帧
@@ -308,10 +312,9 @@ const object[] map = {
     )
 };
 
-// 找到最近的物体并计算距离
 object nearest_object(vec3 p) {
-    object o; o.dis = TMAX;
-    for (int i = 0; i < map.length(); i++) {
+    object o = map[0]; o.dis = abs(signed_distance(o, p));
+    for (int i = 1; i < map.length(); i++) {
         object oi = map[i];
         oi.dis = abs(signed_distance(oi, p));
         if (oi.dis < o.dis) o = oi;
@@ -330,24 +333,17 @@ vec3 calc_normal(object obj, vec3 p) {
 
 // 用世界坐标下的法线计算 TBN 矩阵
 mat3 TBN(vec3 N) {
-    vec3 T, B;
-    
-    if (N.z < -0.99999) {
-        T = vec3(0, -1, 0);
-        B = vec3(-1, 0, 0);
-    } else {
-        float a = 1.0 / (1.0 + N.z);
-        float b = -N.x*N.y*a;
-        
-        T = vec3(1.0 - N.x*N.x*a, b, -N.x);
-        B = vec3(b, 1.0 - N.y*N.y*a, -N.y);
-    }
+    float s = sign(sign(N.z) + 0.5);
+    float a = -1.0 / (s + N.z);
+    float b = N.x * N.y * a;
+    vec3 T = vec3(1.0 + s * N.x * N.x * a, s * b, -s * N.x);
+    vec3 B = vec3(b, s + N.y * N.y * a, -N.y);
     
     return mat3(T, B, N);
 }
 
-// 光线步进
-record raycast(ray r) {
+// from http://erleuchtet.org/~cupe/permanent/enhanced_sphere_tracing.pdf
+record raycast(ray r, float pixradius) {
     record rec; rec.t = TMIN;
     for(uint i = 0U; i < MAX_RAYMARCH && rec.t < TMAX; i++) {
         rec.position = at(r, rec.t);
@@ -378,14 +374,13 @@ float pow5(float x) {
     return t*x;
 }
 
-// 计算菲涅尔近似值
-float fresnel_schlick(float cosine, float F0) {
-    return F0 + (1.0 - F0) * pow5(abs(1.0 - cosine));
+float fresnel_schlick(float NoI, float F0) {
+    return mix(pow(abs(1.0 + NoI), 5.0), 1.0, F0);
 }
 
-// 用粗糙度计算菲涅尔近似值
-float fresnel_schlick_roughness(float cosine, float F0, float roughness) {
-    return F0 + (max(1.0 - roughness, F0) - F0) * pow5(abs(1.0 - cosine));
+// 用粗糙度计算菲涅尔
+float fresnel_schlick_roughness(float NoI, float F0, float roughness) {
+    return mix(fresnel_schlick(NoI, F0), F0, roughness);
 }
 
 // 以 n 为法线进行半球采样
@@ -426,44 +421,31 @@ ray PBR(ray r, inout record rec, inout random rand) {
     
     // 光线和物体表面参数
     vec3 I  = r.direction;
-    vec3 V  = -r.direction;
     vec3 P  = rec.position;
-    vec3 N  = TBN(normal) * calc_normal(rec.obj, P);
+    vec3 N  = calc_normal(rec.obj, P);
     vec3 C  = r.color;
     vec3 L;
     
-    float NoV = dot(N, V);
-    float outer = sign(NoV); // 如果处于 SDF 物体内部就反过来
-    NoV *= outer;
+    float outer = -sign(dot(N, r.direction)); // 如果处于 SDF 物体内部就反过来
     N   *= outer;
+    normal = N;
 
-    if (noise(rand) < transmission) {
-        float eta = outer > 0.0 ? ENV_IOR / ior : ior / ENV_IOR; // 计算折射率之比
-        float F0 = (eta - 1.0) / (eta + 1.0); F0 *= 2.0*F0; // 让透明材质的反射更明显一些
-        float F = fresnel_schlick(NoV, F0);
-        N = hemispheric_sampling_roughness(N, roughness, rand);
-        
-        float NoI = -NoV;
-        float k = 1.0 - eta * eta * (1.0 - NoI * NoI);
-        
-        if (noise(rand) < F + metallic || k < 0.0) {
-            L = I - 2.0 * NoI * N; // 菲涅尔反射或全反射
-        } else {
-            L = eta * I - (eta * NoI + sqrt(k)) * N; // 斯涅尔折射
-        }
+    N = hemispheric_sampling_roughness(normal, roughness, rand);
+    float NoI = dot(N, I);
+
+    float eta = outer > 0.0 ? ENV_IOR / ior : ior / ENV_IOR; // 计算折射率之比
+    float k   = 1.0 - eta * eta * (1.0 - NoI * NoI); // 小于 0 为全反射
+    float F0  = (eta - 1.0) / (eta + 1.0); F0 *= 2.0*F0; // 让透明材质的反射更明显一些
+    float F   = fresnel_schlick_roughness(NoI, F0, roughness); // 菲涅尔
+
+    if (noise(rand) < F + metallic || k < 0.0) {
+        L = I - 2.0 * NoI * N; // 包含镜面反射、菲涅尔反射、全反射
+        // 下面可以提高帧数，但是会导致透明材质发黑，需要优化
+        C *= float(dot(L, normal) > 0.0); // 如果光穿入或穿出表面就直接吸收掉
+    } else if (noise(rand) < transmission) {
+        L = eta * I - (sqrt(k) + eta * NoI) * N; // 斯涅尔折射
     } else {
-        float F = fresnel_schlick_roughness(NoV, 0.04, roughness);
-    
-        // 反射或者漫反射
-        if (noise(rand) < F + metallic) {
-            N = hemispheric_sampling_roughness(N, roughness, rand);
-            L = reflect(I, N); // 镜面反射
-        } else {
-            L = hemispheric_sampling(N, rand); // 漫反射
-        }
-        
-        // 如果光射到表面下面就直接吸收掉
-        C *= (sign(dot(L, N*outer)) + 1.0) * 0.5;
+        L = hemispheric_sampling(normal, rand); // 漫反射
     }
 
     C *= albedo;
@@ -481,7 +463,7 @@ float brightness(vec3 rgb) {
 }
 
 // 光线追踪
-ray raytrace(ray r, inout random rand) {
+ray raytrace(ray r, float pixradius, inout random rand) {
     for (uint i = 0U; i < MAX_RAYTRACE; i++) {
         // 俄罗斯轮盘赌概率，防止光线过分的反复反射
         float inv_pdf = exp(float(i) * light_quality);
@@ -494,11 +476,8 @@ ray raytrace(ray r, inout random rand) {
             break;
         }
         
-        // 能量守恒
-        r.color *= inv_pdf;
-        
         // 与地图求交
-        record rec = raycast(r);
+        record rec = raycast(r, pixradius);
         
         // 没击中物体就肯定击中天空
         if (!rec.hit) {
@@ -521,22 +500,34 @@ ray raytrace(ray r, inout random rand) {
 }
 
 // 一次采样
-vec3 sample(camera cam, vec2 uv, vec3 color, inout random rand) {
+vec3 sample(camera cam, vec2 uv, vec3 color, float pixradius, inout random rand) {
     // 获取光线并逆向追踪光线
     ray r = get_ray(cam, uv, color, rand);
-        r = raytrace(r, rand);
+        r = raytrace(r, pixradius, rand);
     
     return r.color;
 }
 
-vec3 aces_approx(vec3 v) {
-    v *= 0.6;
-    const float a = 2.51f;
-    const float b = 0.03f;
-    const float c = 2.43f;
-    const float d = 0.59f;
-    const float e = 0.14f;
-    return (v*(a*v+b))/(v*(c*v+d)+e);
+// Paniq's ACES fitted from https://github.com/TheRealMJP/BakingLab/blob/master/BakingLab/ACES.hlsl
+vec3 ACESFitted(vec3 color) {
+	// sRGB => XYZ => D65_2_D60 => AP1 => RRT_SAT
+    color *= mat3(
+       vec3( 0.59719, 0.35458, 0.04823),
+       vec3( 0.07600, 0.90834, 0.01566),
+       vec3( 0.02840, 0.13383, 0.83777)
+    );
+    // Apply RRT and ODT
+    vec3 a = color * (color + 0.0245786) - 0.000090537;
+    vec3 b = color * (0.983729 * color + 0.4329510) + 0.238081;
+    color  = a / b;
+	// ODT_SAT => XYZ => D60_2_D65 => sRGB
+    color *= mat3(
+        vec3( 1.60475, -0.53108, -0.07367),
+        vec3(-0.10208,  1.10813, -0.00605),
+        vec3(-0.00327, -0.07276,  1.07602)
+    );
+    // Clamp to [0, 1]
+    return clamp(color, 0.0, 1.0);
 }
 
 // 片段着色器程序入口
@@ -565,16 +556,18 @@ void fragment() {
 
     // 超采样
     uv += vec2(noise(rand), noise(rand)) * SCREEN_PIXEL_SIZE;
+	
+	float pixradius = 0.5 * min(SCREEN_PIXEL_SIZE.x, SCREEN_PIXEL_SIZE.y);
     
     // 对每个光子经过的表面采样一次
-    vec3 color = sample(cam, uv, vec3(1), rand);
+    vec3 color = sample(cam, uv, vec3(1), pixradius, rand);
 
-    // 色调映射
-    color *= camera_exposure;
-    color = aces_approx(color);
+   // 伽马矫正
+    color.rgb *= camera_exposure;
+    color.rgb  = pow(color.rgb, vec3(1.0 / camera_gamma));
     
-    // 伽马矫正
-    color = pow(color, vec3(1.0 / camera_gamma));
+    // 色调映射
+    color.rgb = ACESFitted(color.rgb);
     
     // 混合历史的帧来降噪
     vec3 prev = texture(SCREEN_TEXTURE, SCREEN_UV).rgb;

@@ -8,16 +8,6 @@
 
 config_version=5
 
-_global_script_classes=[{
-"base": "Camera3D",
-"class": &"FreeCamera3D",
-"language": &"GDScript",
-"path": "res://addons/RayTracing/shared/script/FreeCamera3D.gd"
-}]
-_global_script_class_icons={
-"FreeCamera3D": ""
-}
-
 [application]
 
 config/name="Ray-Tracing-Shader-Demo"

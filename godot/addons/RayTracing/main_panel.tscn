@@ -7,20 +7,20 @@
 [ext_resource type="Script" path="res://addons/RayTracing/shared/script/always/alwasy_fill_viewport.gd" id="4_cek0v"]
 [ext_resource type="Script" path="res://addons/RayTracing/shared/script/FreeCamera3D.gd" id="5_nuxi6"]
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_jwf4w"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_u10bd"]
 shader = ExtResource("1_0w4fs")
-shader_parameter/camera_aperture = 0.005
-shader_parameter/camera_aspect = 1.95224
-shader_parameter/camera_exposure = 1.0
-shader_parameter/camera_focus = 2.0
-shader_parameter/camera_gamma = 2.2
-shader_parameter/camera_position = Vector3(-1.10021, 0.319031, 2.39494)
-shader_parameter/camera_rotation = Basis(0.883197, 0.140332, -0.447322, 0, 0.954041, 0.299313, 0.468818, -0.264368, 0.8427)
+shader_parameter/camera_position = Vector3(2.74361, 1.47056, 4.6411)
+shader_parameter/camera_rotation = Basis(0.814988, -0.191019, 0.54697, 0, 0.943984, 0.329691, -0.579371, -0.268702, 0.769411)
+shader_parameter/camera_aspect = 3.0
 shader_parameter/camera_vfov = 30.0
-shader_parameter/frame = 266.0
-shader_parameter/light_quality = 0.02
+shader_parameter/camera_focus = 2.0
+shader_parameter/camera_aperture = 0.005
+shader_parameter/camera_exposure = 1.0
+shader_parameter/camera_gamma = 2.2
+shader_parameter/light_quality = 0.00208518
+shader_parameter/frame = 582.0
 
-[sub_resource type="GDScript" id="GDScript_ire2i"]
+[sub_resource type="GDScript" id="GDScript_kv47m"]
 script/source = "@tool
 
 extends ColorRect
@@ -32,24 +32,24 @@ var frame: float = 0
 var max_sample: float = 1024
 
 func _ready() -> void:
-    viewport.size_changed.connect(on_resize)
-    
+	viewport.size_changed.connect(on_resize)
+	
 func on_resize():
-    frame = -1
+	frame = -1
 
 func _process(_delta: float) -> void:
-    if frame >= max_sample:
-        frame = 0
-    if is_instance_valid(camera):
-        if camera.moving:
-            frame = 0
-            
-    if Input.is_action_pressed(\"ui_accept\"):
-        frame = 0
+	if frame >= max_sample:
+		frame = 0
+	if is_instance_valid(camera):
+		if camera and camera.moving:
+			frame = 0
+			
+	if Input.is_action_pressed(\"ui_accept\"):
+		frame = 0
 
-    frame += 1
+	frame += 1
 
-    material.set_shader_parameter(\"frame\", frame)
+	material.set_shader_parameter(\"frame\", frame)
 "
 
 [node name="MainPanel" type="Control"]
@@ -101,14 +101,14 @@ render_target_update_mode = 4
 
 [node name="ShaderRect" type="ColorRect" parent="Control/RayTracing/SubViewport"]
 unique_name_in_owner = true
-material = SubResource("ShaderMaterial_jwf4w")
+material = SubResource("ShaderMaterial_u10bd")
 offset_right = 400.0
 offset_bottom = 200.0
 size_flags_horizontal = 3
 size_flags_vertical = 3
 focus_mode = 2
 mouse_filter = 2
-script = SubResource("GDScript_ire2i")
+script = SubResource("GDScript_kv47m")
 metadata/_edit_use_anchors_ = true
 
 [node name="always_uniform_camera" type="Node" parent="Control/RayTracing/SubViewport/ShaderRect"]
@@ -409,7 +409,7 @@ text = "FPS"
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-text = "88"
+text = "86"
 horizontal_alignment = 2
 
 [node name="HBoxContainer2" type="HBoxContainer" parent="HUD/MarginContainer2/PanelContainer/MarginContainer/VBoxContainer"]
@@ -423,7 +423,7 @@ text = "Sampling"
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-text = "948"
+text = "797"
 horizontal_alignment = 2
 
 [node name="HBoxContainer3" type="HBoxContainer" parent="HUD/MarginContainer2/PanelContainer/MarginContainer/VBoxContainer"]
@@ -594,10 +594,6 @@ rotation_edit_mode = 2
 current = true
 fov = 30.0
 script = ExtResource("5_nuxi6")
-sensitivity = 3.0
-velocity = 5.0
-max_speed = 1000.0
-smooth = 10.0
 
 [connection signal="value_changed" from="HUD/MarginContainer/PanelContainer/MarginContainer/VBoxContainer/HBoxContainer2/max_sample_s" to="." method="_on_max_sample_s_value_changed"]
 [connection signal="value_changed" from="HUD/MarginContainer/PanelContainer/MarginContainer/VBoxContainer/HBoxContainer4/gamma_s" to="." method="_on_gamma_s_value_changed"]
