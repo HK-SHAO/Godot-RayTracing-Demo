@@ -32,7 +32,6 @@ A shader-based PBR ray tracing demo. Real-time denoise and you can freely adjust
 
 ## more info
 
-- GitHub: https://github.com/RayTracing
-- Book: [Ray Tracing in One Weekend](https://raytracing.github.io/books/RayTracingInOneWeekend.html)
-- ShaderToy: https://www.shadertoy.com/
-- shao.fun https://shao.fun/blog/w/godot-ray-tracing.html
+- GitHub: https://github.com/HK-SHAO/RayTracingPBR
+- ShaderToy: https://www.shadertoy.com/view/Dtj3DG
+- https://shao.fun/blog/w/godot-ray-tracing.html
